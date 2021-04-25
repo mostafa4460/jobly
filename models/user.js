@@ -169,7 +169,7 @@ class User {
         {
           firstName: "first_name",
           lastName: "last_name",
-          isAdmin: "is_admin",
+          isAdmin: "is_admin"
         });
     const usernameVarIdx = "$" + (values.length + 1);
 

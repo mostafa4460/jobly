@@ -104,7 +104,7 @@ class Company {
         data,
         {
           numEmployees: "num_employees",
-          logoUrl: "logo_url",
+          logoUrl: "logo_url"
         });
     const handleVarIdx = "$" + (values.length + 1);
 
