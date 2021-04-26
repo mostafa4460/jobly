@@ -45,19 +45,49 @@ class Company {
   }
 
   /** Find all companies.
+   * 
+   * Accepts a query obj and can filter by:
+   * - name (case-insensitive, partial matches)
+   * - minEmployees (num_employees >= num)
+   * - maxEmployees (num_employees <= num)
    *
    * Returns [{ handle, name, description, numEmployees, logoUrl }, ...]
-   * */
+  */
 
-  static async findAll() {
-    const companiesRes = await db.query(
-          `SELECT handle,
-                  name,
-                  description,
-                  num_employees AS "numEmployees",
-                  logo_url AS "logoUrl"
-           FROM companies
-           ORDER BY name`);
+  static async findAll(query = null) {
+    let companiesRes;
+
+    if (query) {
+      const q = Object.keys(query);
+      const whereCols = [];
+      for (let i = 0; i < q.length; i++) {
+        if (q[i] === "name") {
+          whereCols.push(`"name" ILIKE '%' || $${i + 1} || '%'`);
+        } else if (q[i] === "minEmployees") {
+          whereCols.push(`"num_employees" >= $${i + 1}`);
+        } else {
+          whereCols.push(`"num_employees" <= $${i + 1}`);
+        }
+      }
+      companiesRes = await db.query(
+        `SELECT handle,
+                name,
+                description,
+                num_employees AS "numEmployees",
+                logo_url AS "logoUrl"
+         FROM companies
+         WHERE ${whereCols.join(' AND ')}
+         ORDER BY name`, Object.values(query));
+    } else {
+      companiesRes = await db.query(
+        `SELECT handle,
+                name,
+                description,
+                num_employees AS "numEmployees",
+                logo_url AS "logoUrl"
+         FROM companies
+         ORDER BY name`);
+    }
     return companiesRes.rows;
   }
 

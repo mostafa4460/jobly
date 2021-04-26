@@ -106,6 +106,39 @@ describe("GET /companies", function () {
         .set("authorization", `Bearer ${u1Token}`);
     expect(resp.statusCode).toEqual(500);
   });
+
+  test("filters companies with valid query", async () => {
+    const res = await request(app)
+      .get('/companies')
+      .query({name: "c", minEmployees: 1, maxEmployees: 2});
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({
+      companies: 
+      [
+        {
+          handle: "c1",
+          name: "C1",
+          description: "Desc1",
+          numEmployees: 1,
+          logoUrl: "http://c1.img",
+        },
+        {
+          handle: "c2",
+          name: "C2",
+          description: "Desc2",
+          numEmployees: 2,
+          logoUrl: "http://c2.img",
+        }
+      ]
+    });
+  });
+
+  test("Fails with 400 status code for invalid query", async () => {
+    const res = await request(app)
+      .get('/companies')
+      .query({invalid: "wrong"});
+    expect(res.statusCode).toBe(400);
+  })
 });
 
 /************************************** GET /companies/:handle */

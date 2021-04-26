@@ -11,6 +11,7 @@ const Company = require("../models/company");
 
 const companyNewSchema = require("../schemas/companyNew.json");
 const companyUpdateSchema = require("../schemas/companyUpdate.json");
+const companyQuerySchema = require("../schemas/companyQuery.json");
 
 const router = new express.Router();
 
@@ -45,14 +46,34 @@ router.post("/", ensureLoggedIn, async function (req, res, next) {
  * Can filter on provided search filters:
  * - minEmployees
  * - maxEmployees
- * - nameLike (will find case-insensitive, partial matches)
+ * - name (will find case-insensitive, partial matches)
  *
  * Authorization required: none
  */
 
 router.get("/", async function (req, res, next) {
   try {
-    const companies = await Company.findAll();
+    let companies;
+
+    if (Object.keys(req.query).length === 0) {
+      companies = await Company.findAll();
+    } else {
+      // convert minEmployees and maxEmployees into integers if in query
+      for (let [key, value] of Object.entries(req.query)) {
+        if (key === "minEmployees" || key === "maxEmployees") {
+          req.query[key] = +value;
+        }
+      }
+      
+      const validator = jsonschema.validate(req.query, companyQuerySchema);
+      if (!validator.valid) {
+        const errors = validator.errors.map(e => e.stack);
+        throw new BadRequestError(errors);
+      } else if (req.query.minEmployees > req.query.maxEmployees) {
+        throw new BadRequestError("minEmployees cannot be greater than maxEmployees");
+      }
+      companies = await Company.findAll(req.query);
+    }
     return res.json({ companies });
   } catch (err) {
     return next(err);
