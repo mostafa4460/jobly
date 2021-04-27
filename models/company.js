@@ -93,39 +93,61 @@ class Company {
 
   /** Given a company handle, return data about company.
    *
+   * IF company has jobs:
    * Returns { handle, name, description, numEmployees, logoUrl, jobs }
    *   where jobs is [{ id, title, salary, equity, companyHandle }, ...]
+   * 
+   * ELSE:
+   * Returns { handle, name, description, numEmployees, logoUrl }
    *
    * Throws NotFoundError if not found.
    **/
 
   static async get(handle) {
-    const companyRes = await db.query(
-          `SELECT c.handle,
-                  c.name,
-                  c.description,
-                  c.num_employees AS "numEmployees",
-                  c.logo_url AS "logoUrl",
-                  json_agg(
-                    json_build_object(
-                      'id', j.id, 
-                      'title', j.title, 
-                      'salary', j.salary, 
-                      'equity', j.equity, 
-                      'companyHandle', j.company_handle
-                    )
-                  ) AS jobs
-           FROM companies AS c
-           LEFT JOIN jobs AS j
-           ON c.handle = j.company_handle
-           WHERE handle = $1
-           GROUP BY c.handle`,
+    let companyRes;
+
+    const jobs = await db.query(
+      `SELECT id FROM jobs
+      WHERE company_handle = $1`,
+      [handle]
+    );
+    
+    if (jobs.rows.length === 0) {
+      companyRes = await db.query(
+        `SELECT handle,
+                name,
+                description,
+                num_employees AS "numEmployees",
+                logo_url AS "logoUrl"
+        FROM companies
+        WHERE handle = $1`,
         [handle]);
+    } else {
+      companyRes = await db.query(
+        `SELECT c.handle,
+                c.name,
+                c.description,
+                c.num_employees AS "numEmployees",
+                c.logo_url AS "logoUrl",
+                json_agg(
+                  json_build_object(
+                    'id', j.id, 
+                    'title', j.title, 
+                    'salary', j.salary, 
+                    'equity', j.equity, 
+                    'companyHandle', j.company_handle
+                  )
+                ) AS jobs
+         FROM companies AS c
+         LEFT JOIN jobs AS j
+         ON c.handle = j.company_handle
+         WHERE handle = $1
+         GROUP BY c.handle`,
+      [handle]);
+    }
 
     const company = companyRes.rows[0];
-
     if (!company) throw new NotFoundError(`No company: ${handle}`);
-
     return company;
   }
 
