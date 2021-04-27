@@ -12,7 +12,7 @@ const { BadRequestError } = require("../expressError");
  * sqlForPartialUpdate({firstName: "Test", lastName: "User"},
  * {firstName: "first_name",
  *  lastName: "last_name", 
- *  isAdmin: "is_admin"}) ===> {
+ *  isAdmin: "is_admin"}) ==> {
  *                              setCols: "first_name"=$1, "last_name"=$2,
  *                              values: ["Test", "User"]
  *                             }
