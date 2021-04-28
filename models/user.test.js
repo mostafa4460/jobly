@@ -14,7 +14,21 @@ const {
   commonAfterAll,
 } = require("./_testCommon");
 
-beforeAll(commonBeforeAll);
+beforeAll(async () => {
+  await commonBeforeAll();
+  await db.query("DELETE FROM applications");
+  await db.query("DELETE FROM jobs");
+  await db.query(
+    `INSERT INTO jobs (id, title, company_handle)
+    VALUES (1111, 'J1', 'c1'),
+           (2222, 'J2', 'c2')`
+  );
+  await db.query(
+    `INSERT INTO applications (username, job_id)
+    VALUES ('u2', 1111),
+           ('u2', 2222)`
+  );
+});
 beforeEach(commonBeforeEach);
 afterEach(commonAfterEach);
 afterAll(commonAfterAll);
@@ -132,7 +146,7 @@ describe("findAll", function () {
 /************************************** get */
 
 describe("get", function () {
-  test("works", async function () {
+  test("works: doesn't include jobs array if user did not apply to any", async function () {
     let user = await User.get("u1");
     expect(user).toEqual({
       username: "u1",
@@ -140,6 +154,21 @@ describe("get", function () {
       lastName: "U1L",
       email: "u1@email.com",
       isAdmin: false,
+    });
+  });
+
+  test("works: includes jobs array if user applied to some", async function () {
+    let user = await User.get("u2");
+    expect(user).toEqual({
+      username: "u2",
+      firstName: "U2F",
+      lastName: "U2L",
+      email: "u2@email.com",
+      isAdmin: false,
+      jobs: [
+        1111,
+        2222
+      ]
     });
   });
 

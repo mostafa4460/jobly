@@ -15,7 +15,21 @@ const {
   u2Token
 } = require("./_testCommon");
 
-beforeAll(commonBeforeAll);
+beforeAll(async () => {
+  await commonBeforeAll();
+  await db.query("DELETE FROM applications");
+  await db.query("DELETE FROM jobs");
+  await db.query(
+    `INSERT INTO jobs (id, title, company_handle)
+    VALUES (1111, 'J1', 'c1'),
+           (2222, 'J2', 'c2')`
+  );
+  await db.query(
+    `INSERT INTO applications (username, job_id)
+    VALUES ('u2', 1111),
+           ('u2', 2222)`
+  );
+});
 beforeEach(commonBeforeEach);
 afterEach(commonAfterEach);
 afterAll(commonAfterAll);
@@ -188,7 +202,7 @@ describe("GET /users", function () {
 /************************************** GET /users/:username */
 
 describe("GET /users/:username", function () {
-  test("works for admins", async function () {
+  test("works for admins, doesn't include jobs array", async function () {
     const resp = await request(app)
         .get(`/users/u1`)
         .set("authorization", `Bearer ${u2Token}`);
@@ -203,7 +217,26 @@ describe("GET /users/:username", function () {
     });
   });
 
-  test("works for users who own the account", async function () {
+  test("works for admins, includes jobs array", async function () {
+    const resp = await request(app)
+        .get(`/users/u2`)
+        .set("authorization", `Bearer ${u2Token}`);
+    expect(resp.body).toEqual({
+      user: {
+        username: "u2",
+        firstName: "U2F",
+        lastName: "U2L",
+        email: "user2@user.com",
+        isAdmin: false,
+        jobs: [
+          1111,
+          2222
+        ]
+      },
+    });
+  });
+
+  test("works for users who own the account, doesn't include jobs array", async function () {
     const resp = await request(app)
         .get(`/users/u1`)
         .set("authorization", `Bearer ${u1Token}`);
@@ -374,5 +407,38 @@ describe("DELETE /users/:username", function () {
         .delete(`/users/nope`)
         .set("authorization", `Bearer ${u2Token}`);
     expect(resp.statusCode).toEqual(404);
+  });
+});
+
+/************************************** POST /users/:username/jobs/:id */
+
+describe("POST /users/:username/jobs/:id", () => {
+  test("works for admins", async () => {
+    const resp = await request(app)
+      .post('/users/u1/jobs/1111')
+      .set("authorization", `Bearer ${u2Token}`);
+    expect(resp.statusCode).toBe(201);
+    expect(resp.body).toEqual({ applied: 1111 });
+  });
+
+  test("works for users who own the account", async () => {
+    const resp = await request(app)
+      .post('/users/u1/jobs/1111')
+      .set("authorization", `Bearer ${u1Token}`);
+    expect(resp.statusCode).toBe(201);
+    expect(resp.body).toEqual({ applied: 1111 });
+  });
+
+  test("unauth for anon", async () => {
+    const resp = await request(app)
+      .post('/users/u1/jobs/1111');
+    expect(resp.statusCode).toBe(401);
+  });
+
+  test("unauth for users applying to jobs for other users", async () => {
+    const resp = await request(app)
+      .post('/users/u2/jobs/1111')
+      .set("authorization", `Bearer ${u1Token}`);
+    expect(resp.statusCode).toBe(401);
   });
 });
